@@ -4,7 +4,7 @@ from typing import Dict
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import auth
+from app.routers import auth, game
 
 
 def create_app() -> FastAPI:
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
 
     # Register API routers
     app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+    app.include_router(game.router, tags=["Game"])
 
     @app.get("/health", tags=["Health"])
     def get_health() -> Dict[str, str]:

@@ -137,3 +137,4 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.makeInvincible(1500);
   }
 }
+

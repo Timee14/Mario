@@ -55,3 +55,4 @@ export default class Coin extends Phaser.Physics.Arcade.Sprite {
     });
   }
 }
+

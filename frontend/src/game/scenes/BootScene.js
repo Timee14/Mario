@@ -269,3 +269,4 @@ export default class BootScene extends Phaser.Scene {
     g.destroy();
   }
 }
+

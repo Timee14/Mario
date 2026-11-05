@@ -1,86 +1,87 @@
 import React from 'react';
-import GameCanvas from '../components/GameCanvas.jsx';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 /**
- * Home page hosting the Phaser 3 Mario platformer.
+ * Landing Home page introducing Mario Analytics.
  */
 export default function Home() {
+  const { isAuthenticated, user } = useAuth();
+
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: 'calc(100vh - 65px)',
         backgroundColor: '#1a1a2e',
         color: '#ffffff',
-        fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
-        padding: '24px 16px',
+        padding: '60px 16px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
       }}
     >
-      <header style={{ textAlign: 'center', marginBottom: '20px' }}>
+      <div style={{ maxWidth: '650px' }}>
         <h1
           style={{
-            margin: '0 0 8px 0',
-            fontSize: '2.4rem',
+            fontSize: '3.2rem',
+            margin: '0 0 16px 0',
             color: '#e74c3c',
-            textShadow: '2px 2px 0px #f39c12',
+            textShadow: '3px 3px 0px #f39c12',
             letterSpacing: '1px',
           }}
         >
           MARIO ANALYTICS
         </h1>
-        <p style={{ margin: 0, color: '#bdc3c7', fontSize: '1rem' }}>
-          Full-Stack Platformer with Real-Time Telemetry & AI Difficulty
+        <p style={{ fontSize: '1.2rem', color: '#bdc3c7', lineHeight: '1.6', marginBottom: '32px' }}>
+          A full-stack Mario-style platformer featuring real-time gameplay telemetry,
+          player skill profiling, and dynamic AI-driven difficulty adaptation.
         </p>
-      </header>
 
-      <main style={{ width: '100%', maxWidth: '840px' }}>
-        <GameCanvas />
-
-        <div
-          style={{
-            marginTop: '20px',
-            backgroundColor: '#16213e',
-            borderRadius: '8px',
-            padding: '16px 24px',
-            display: 'flex',
-            justifyContent: 'space-around',
-            flexWrap: 'wrap',
-            gap: '16px',
-            border: '1px solid #0f3460',
-          }}
-        >
-          <div>
-            <strong style={{ color: '#f1c40f' }}>Controls:</strong>
-            <div style={{ fontSize: '0.9rem', color: '#ecf0f1', marginTop: '4px' }}>
-              • Move: <kbd style={kbdStyle}>Left / Right</kbd> or <kbd style={kbdStyle}>A / D</kbd>
-              <br />
-              • Jump: <kbd style={kbdStyle}>Up / W / Space</kbd> (Hold for higher jump)
-            </div>
-          </div>
-
-          <div>
-            <strong style={{ color: '#2ecc71' }}>Objectives:</strong>
-            <div style={{ fontSize: '0.9rem', color: '#ecf0f1', marginTop: '4px' }}>
-              • Stomp enemies (+100 pts)
-              <br />
-              • Collect coins (+50 pts)
-              <br />
-              • Reach the flag pole to win!
-            </div>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <Link
+            to="/play"
+            style={{
+              backgroundColor: '#e74c3c',
+              color: '#ffffff',
+              padding: '14px 28px',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: 'bold',
+              fontSize: '1.1rem',
+              boxShadow: '0 4px 14px rgba(231, 76, 60, 0.4)',
+            }}
+          >
+            🎮 {isAuthenticated ? 'Play Game' : 'Sign In & Play'}
+          </Link>
+          <Link
+            to="/leaderboard"
+            style={{
+              backgroundColor: '#16213e',
+              border: '2px solid #0f3460',
+              color: '#f1c40f',
+              padding: '14px 28px',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              fontWeight: 'bold',
+              fontSize: '1.1rem',
+            }}
+          >
+            🏆 Leaderboard
+          </Link>
         </div>
-      </main>
+
+        {isAuthenticated ? (
+          <p style={{ marginTop: '28px', color: '#2ecc71', fontSize: '0.95rem' }}>
+            Logged in as <strong>{user?.username}</strong>
+          </p>
+        ) : (
+          <p style={{ marginTop: '28px', color: '#95a5a6', fontSize: '0.9rem' }}>
+            New player? <Link to="/register" style={{ color: '#3498db' }}>Create an account</Link> to save your runs.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
-
-const kbdStyle = {
-  backgroundColor: '#0f3460',
-  padding: '2px 6px',
-  borderRadius: '4px',
-  border: '1px solid #1a1a2e',
-  fontSize: '0.85rem',
-  fontWeight: 'bold',
-};

@@ -4,31 +4,37 @@ import { createGameConfig } from '../game/config.js';
 
 /**
  * GameCanvas mounts and cleanly destroys a Phaser 3 game instance in React.
- * Prevents duplicate instances in React 18 StrictMode.
+ * Forwards game events such as 'run:completed' to parent callbacks.
  */
-export default function GameCanvas() {
+export default function GameCanvas({ onRunCompleted }) {
   const containerRef = useRef(null);
 
   useEffect(() => {
     let gameInstance = null;
 
     if (containerRef.current) {
-      // Clear any stale children from previous mounts
       while (containerRef.current.firstChild) {
         containerRef.current.removeChild(containerRef.current.firstChild);
       }
 
       const config = createGameConfig(containerRef.current);
       gameInstance = new Phaser.Game(config);
+
+      if (onRunCompleted) {
+        gameInstance.events.on('run:completed', onRunCompleted);
+      }
     }
 
     return () => {
       if (gameInstance) {
+        if (onRunCompleted) {
+          gameInstance.events.off('run:completed', onRunCompleted);
+        }
         gameInstance.destroy(true);
         gameInstance = null;
       }
     };
-  }, []);
+  }, [onRunCompleted]);
 
   return (
     <div
