@@ -194,3 +194,4 @@ def test_patch_run_wrong_owner(client: TestClient) -> None:
         json={"score": 99999},
     )
     assert patch_res.status_code == 403
+

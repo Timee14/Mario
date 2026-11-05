@@ -50,3 +50,4 @@ def submit_telemetry_batch(
     db.commit()
 
     return TelemetryBatchOut(status="ok", inserted=len(events_to_insert))
+
