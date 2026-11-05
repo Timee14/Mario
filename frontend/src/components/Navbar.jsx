@@ -97,3 +97,4 @@ const registerBtnStyle = {
   textDecoration: 'none',
   fontWeight: 'bold',
 };
+

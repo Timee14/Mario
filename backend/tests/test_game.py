@@ -177,3 +177,4 @@ def test_leaderboard_view_and_filtering(client: TestClient) -> None:
     assert board[0]["score"] == 5000
     assert board[1]["username"] == "pro_gamer"
     assert board[1]["score"] == 3000
+

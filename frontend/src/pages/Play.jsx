@@ -20,19 +20,26 @@ export default function Play() {
       return;
     }
 
-    try {
-      const savedRun = await submitRun(runData);
-      setNotification({
-        type: 'success',
-        message: `Run saved! Score: ${savedRun.score} | Coins: ${savedRun.coins} | ${
-          savedRun.completed ? '🏆 Course Cleared!' : '💀 Game Over'
-        }`,
-      });
-    } catch (err) {
-      console.error('Failed to submit run:', err);
+    let finalRun = runData;
+    if (!finalRun.id && !finalRun.error) {
+      try {
+        finalRun = await submitRun(runData);
+      } catch (err) {
+        console.error('Failed to submit fallback run:', err);
+      }
+    }
+
+    if (finalRun.error) {
       setNotification({
         type: 'error',
         message: 'Failed to upload run to server. Please check your connection.',
+      });
+    } else {
+      setNotification({
+        type: 'success',
+        message: `Run saved! Score: ${finalRun.score} | Coins: ${finalRun.coins} | ${
+          finalRun.completed ? '🏆 Course Cleared!' : '💀 Game Over'
+        }`,
       });
     }
   };
@@ -151,3 +158,4 @@ const kbdStyle = {
   fontSize: '0.85rem',
   fontWeight: 'bold',
 };
+

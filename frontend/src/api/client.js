@@ -59,8 +59,26 @@ export async function fetchLevels() {
   return response.data;
 }
 
+export async function startRun(levelId = 1) {
+  const response = await apiClient.post('/runs', { level_id: levelId });
+  return response.data;
+}
+
+export async function updateRun(runId, runData) {
+  const response = await apiClient.patch(`/runs/${runId}`, runData);
+  return response.data;
+}
+
 export async function submitRun(runData) {
   const response = await apiClient.post('/runs', runData);
+  return response.data;
+}
+
+export async function sendTelemetryBatch(runId, events) {
+  const response = await apiClient.post('/telemetry/batch', {
+    run_id: runId,
+    events,
+  });
   return response.data;
 }
 
@@ -74,3 +92,4 @@ export async function fetchLeaderboard(levelId = null) {
   const response = await apiClient.get(url);
   return response.data;
 }
+

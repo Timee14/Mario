@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import Player from '../entities/Player.js';
 import Enemy from '../entities/Enemy.js';
 import Coin from '../entities/Coin.js';
+import TelemetryManager from '../telemetry.js';
+import { startRun, updateRun } from '../../api/client.js';
 import level1Data from '../levels/level1.json';
 
 /**
@@ -20,6 +22,37 @@ export default class LevelScene extends Phaser.Scene {
     this.enemiesStomped = 0;
     this.startTime = Date.now();
     this.isGameOver = false;
+    this.midpointReached = false;
+
+    // Initialize telemetry manager and buffering
+    this.telemetry = new TelemetryManager();
+    this.telemetry.start();
+    this.currentRunId = null;
+
+    // Create in-progress run record in backend if user is authenticated
+    const token = localStorage.getItem('token');
+    if (token) {
+      this.runInitPromise = startRun(1)
+        .then((run) => {
+          this.currentRunId = run.id;
+          this.telemetry.setRunId(run.id);
+          return run;
+        })
+        .catch((err) => {
+          console.warn('Failed to start run in backend:', err?.message || err);
+          return null;
+        });
+    } else {
+      this.runInitPromise = Promise.resolve(null);
+    }
+
+    // Teardown listener to stop telemetry timer when scene shuts down
+    this.events.once('shutdown', () => {
+      if (this.telemetry) this.telemetry.stop();
+    });
+    this.events.once('destroy', () => {
+      if (this.telemetry) this.telemetry.stop();
+    });
 
     this.levelData = level1Data;
     this.levelWidthPx = this.levelData.width * this.levelData.tileSize;
@@ -143,6 +176,10 @@ export default class LevelScene extends Phaser.Scene {
     this.coins += 1;
     this.score += 50;
     this.updateHUD();
+
+    if (this.telemetry) {
+      this.telemetry.record('coin', coin.x, coin.y, { coin_count: this.coins });
+    }
   }
 
   handlePlayerEnemyCollision(player, enemy) {
@@ -158,6 +195,10 @@ export default class LevelScene extends Phaser.Scene {
       this.enemiesStomped += 1;
       this.score += 100;
       this.updateHUD();
+
+      if (this.telemetry) {
+        this.telemetry.record('stomp', enemy.x, enemy.y, { enemies_stomped: this.enemiesStomped });
+      }
     } else if (!player.isInvincible) {
       this.handlePlayerDamage();
     }
@@ -168,6 +209,13 @@ export default class LevelScene extends Phaser.Scene {
 
     this.lives -= 1;
     this.updateHUD();
+
+    if (this.telemetry) {
+      this.telemetry.record('death', this.player.x, this.player.y, {
+        cause: 'enemy',
+        lives_remaining: this.lives,
+      });
+    }
 
     if (this.lives <= 0) {
       this.player.isDead = true;
@@ -184,6 +232,13 @@ export default class LevelScene extends Phaser.Scene {
     this.lives -= 1;
     this.updateHUD();
 
+    if (this.telemetry) {
+      this.telemetry.record('death', this.player.x, this.player.y, {
+        cause: 'pit',
+        lives_remaining: this.lives,
+      });
+    }
+
     if (this.lives <= 0) {
       this.player.isDead = true;
       this.triggerGameOver(false);
@@ -198,6 +253,10 @@ export default class LevelScene extends Phaser.Scene {
     player.isVictorious = true;
     player.setVelocity(0, 0);
     player.body.setAllowGravity(false);
+
+    if (this.telemetry) {
+      this.telemetry.record('checkpoint', flagpole.x, flagpole.y, { type: 'goal_flag' });
+    }
 
     this.tweens.add({
       targets: this.flag,
@@ -243,7 +302,6 @@ export default class LevelScene extends Phaser.Scene {
     const deathsCount = Math.max(0, 3 - this.lives);
 
     const runPayload = {
-      level_id: 1,
       score: this.score,
       coins: this.coins,
       enemies_stomped: this.enemiesStomped,
@@ -253,8 +311,25 @@ export default class LevelScene extends Phaser.Scene {
       difficulty_used: 'normal',
     };
 
-    // Emit event on game event bus for React / backend consumption
-    this.game.events.emit('run:completed', runPayload);
+    // Finalize telemetry and update backend run
+    const finalizeRun = async () => {
+      try {
+        const run = await this.runInitPromise;
+        if (run && run.id) {
+          await this.telemetry.endRun();
+          const updatedRun = await updateRun(run.id, runPayload);
+          this.game.events.emit('run:completed', updatedRun);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to update run on backend:', err?.message || err);
+      }
+
+      await this.telemetry.endRun();
+      this.game.events.emit('run:completed', { level_id: 1, ...runPayload });
+    };
+
+    finalizeRun();
 
     this.scene.start('GameOverScene', {
       win: isWin,
@@ -266,6 +341,14 @@ export default class LevelScene extends Phaser.Scene {
   update(time, delta) {
     if (this.player && !this.isGameOver) {
       this.player.update(time);
+
+      // Midpoint checkpoint event
+      if (!this.midpointReached && this.player.x >= this.levelWidthPx / 2) {
+        this.midpointReached = true;
+        if (this.telemetry) {
+          this.telemetry.record('checkpoint', this.player.x, this.player.y, { type: 'midpoint' });
+        }
+      }
 
       if (this.player.y > this.levelHeightPx + 40) {
         this.handleFallInPit();

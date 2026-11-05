@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Level, PlayerProfile, Run, User
-from app.schemas import LeaderboardEntry, LevelOut, RunCreate, RunOut
+from app.schemas import LeaderboardEntry, LevelOut, RunCreate, RunOut, RunUpdate
 from app.security import get_current_user
 
 router = APIRouter()
@@ -45,6 +45,53 @@ def create_run(
         difficulty_used=run_in.difficulty_used,
     )
     db.add(run)
+    db.commit()
+    db.refresh(run)
+
+    # Recalculate user player profile aggregates
+    stats = (
+        db.query(
+            func.avg(Run.deaths).label("avg_deaths"),
+            func.avg(Run.duration_sec).label("avg_time"),
+        )
+        .filter(Run.user_id == current_user.id)
+        .first()
+    )
+
+    profile = db.query(PlayerProfile).filter(PlayerProfile.user_id == current_user.id).first()
+    if profile:
+        profile.avg_deaths = float(stats.avg_deaths or 0.0)
+        profile.avg_time = float(stats.avg_time or 0.0)
+        db.commit()
+
+    return run
+
+
+@router.patch("/runs/{run_id}", response_model=RunOut)
+def update_run(
+    run_id: int,
+    run_in: RunUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Run:
+    """Update an existing game run upon completion or game over."""
+    run = db.query(Run).filter(Run.id == run_id).first()
+    if not run:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Run with id {run_id} not found",
+        )
+
+    if run.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this run",
+        )
+
+    update_data = run_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(run, key, value)
+
     db.commit()
     db.refresh(run)
 
@@ -108,3 +155,4 @@ def get_leaderboard(
         rows = db.execute(stmt).mappings().all()
 
     return [LeaderboardEntry(**dict(row)) for row in rows]
+

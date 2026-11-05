@@ -1,7 +1,7 @@
 """Pydantic schemas for request validation and response serialization."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -56,16 +56,28 @@ class LevelOut(BaseModel):
 
 
 class RunCreate(BaseModel):
-    """Schema for submitting run completion telemetry."""
+    """Schema for initiating or submitting a game run."""
 
     level_id: int
-    score: int = Field(..., ge=0, description="Run score must be non-negative")
+    score: int = Field(default=0, ge=0, description="Run score must be non-negative")
     coins: int = Field(default=0, ge=0, description="Collected coins must be non-negative")
     enemies_stomped: int = Field(default=0, ge=0, description="Enemies stomped must be non-negative")
     deaths: int = Field(default=0, ge=0, description="Number of deaths must be non-negative")
     duration_sec: float = Field(default=0.0, ge=0.0, description="Duration in seconds must be non-negative")
     completed: bool = Field(default=False, description="Whether the run reached the goal flag")
     difficulty_used: str = Field(default="normal", description="Difficulty used during run")
+
+
+class RunUpdate(BaseModel):
+    """Schema for updating run metrics upon completion."""
+
+    score: Optional[int] = Field(default=None, ge=0, description="Run score must be non-negative")
+    coins: Optional[int] = Field(default=None, ge=0, description="Collected coins must be non-negative")
+    enemies_stomped: Optional[int] = Field(default=None, ge=0, description="Enemies stomped must be non-negative")
+    deaths: Optional[int] = Field(default=None, ge=0, description="Number of deaths must be non-negative")
+    duration_sec: Optional[float] = Field(default=None, ge=0.0, description="Duration in seconds must be non-negative")
+    completed: Optional[bool] = Field(default=None, description="Whether the run reached the goal flag")
+    difficulty_used: Optional[str] = Field(default=None, description="Difficulty used during run")
 
 
 class RunOut(BaseModel):
@@ -102,3 +114,27 @@ class LeaderboardEntry(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TelemetryEventIn(BaseModel):
+    """Schema for an individual telemetry event logged during gameplay."""
+
+    event_type: Literal["death", "coin", "stomp", "checkpoint", "jump"]
+    x: float = Field(..., description="Player X coordinate")
+    y: float = Field(..., description="Player Y coordinate")
+    t_ms: int = Field(..., ge=0, description="Timestamp in milliseconds since run start")
+    meta: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Arbitrary event metadata")
+
+
+class TelemetryBatchIn(BaseModel):
+    """Schema for batch ingestion of gameplay telemetry events."""
+
+    run_id: int
+    events: List[TelemetryEventIn] = Field(..., max_length=500, description="List of events up to 500")
+
+
+class TelemetryBatchOut(BaseModel):
+    """Schema for telemetry batch ingestion response."""
+
+    status: str = "ok"
+    inserted: int

@@ -89,6 +89,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityY(this.jumpForce);
       this.lastGroundTime = 0; // Consume coyote time
       this.lastJumpPressTime = 0; // Consume buffered jump
+
+      if (this.scene && this.scene.telemetry) {
+        this.scene.telemetry.record('jump', this.x, this.y);
+      }
     }
 
     // 3. Variable jump height: release early to cut jump short
