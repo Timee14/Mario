@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres:16
+    container_name: mario_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: mario
+      POSTGRES_PASSWORD: mariopassword
+      POSTGRES_DB: mario_analytics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+
